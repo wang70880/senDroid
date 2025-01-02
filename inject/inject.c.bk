@@ -4,7 +4,6 @@
 #include <asm/ptrace.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
 #include <dlfcn.h>
 #include <dirent.h>
@@ -35,11 +34,6 @@
 
 const char *libc_path = "/system/lib/libc.so";
 const char *linker_path = "/system/bin/linker";
-
-int ptrace_getregs(pid_t pid, struct pt_regs * regs);
-int ptrace_setregs(pid_t pid, struct pt_regs * regs);
-int ptrace_continue(pid_t pid);
-
 
 int ptrace_readdata(pid_t pid,  uint8_t *src, uint8_t *buf, size_t size)
 {

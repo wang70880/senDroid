@@ -20,7 +20,7 @@ LOCAL_SRC_FILES := \
 
 #LOCAL_SHARED_LIBRARIES := libcutils
 LOCAL_LDLIBS += -L$(SYSROOT)/usr/lib -llog
-LOCAL_CFLAGS += -pie -fPIE
+LOCAL_CFLAGS += -pie -fPIE -Wno-pointer-sign -Wno-format -Wno-int-conversion
 LOCAL_LDFLAGS += -pie -fPIE
 #LOCAL_FORCE_STATIC_EXECUTABLE := true
 
