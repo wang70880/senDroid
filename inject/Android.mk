@@ -18,7 +18,7 @@ LOCAL_SRC_FILES := \
 
 #shellcode.s
 
-LOCAL_SHARED_LIBRARIES := libcutils
+#LOCAL_SHARED_LIBRARIES := libcutils
 LOCAL_LDLIBS += -L$(SYSROOT)/usr/lib -llog
 LOCAL_CFLAGS += -pie -fPIE
 LOCAL_LDFLAGS += -pie -fPIE
