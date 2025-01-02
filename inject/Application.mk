@@ -1,3 +1,3 @@
-APP_ABI := armeabi-v7a x86
-APP_PLATFORM := android-28
+APP_ABI := arm64-v8a
+APP_PLATFORM := android-34
 APP_BUILD_SCRIPT := ./inject/Android.mk

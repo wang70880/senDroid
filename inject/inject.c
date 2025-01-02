@@ -18,6 +18,8 @@
 
 #if defined(__i386__)
 #define pt_regs         user_regs_struct
+#elif defined(__aarch64__)
+#define pt_regs         user_regs_struct
 #endif
 
 #define ENABLE_DEBUG 1
@@ -36,8 +38,8 @@
 const char *libc_path = "/system/lib/libc.so";
 const char *linker_path = "/system/bin/linker";
 
-int ptrace_getregs(pid_t pid, struct pt_regs * regs);
-int ptrace_setregs(pid_t pid, struct pt_regs * regs);
+//int ptrace_getregs(pid_t pid, struct pt_regs * regs);
+//int ptrace_setregs(pid_t pid, struct pt_regs * regs);
 int ptrace_continue(pid_t pid);
 
 
@@ -152,7 +154,48 @@ int ptrace_call(pid_t pid, uint32_t addr, long *params, uint32_t num_params, str
 
     return 0;
 }
+#elif defined(__aarch64__)
+int ptrace_call(pid_t pid, uint64_t addr, long *params, uint32_t num_params, struct user_pt_regs *regs) {
+    uint32_t i;
+    for (i = 0; i < num_params && i < 8; i++) {
+        regs->regs[i] = params[i];
+    }
 
+    // Push remaining parameters onto the stack
+    //if (i < num_params) {
+    //    regs->sp -= (num_params - i) * sizeof(long);
+    //    ptrace_writedata(pid, (void *)regs->sp, (uint8_t *)&params[i], (num_params - i) * sizeof(long));
+    //}
+    // Push remaining parameters onto the stack
+    if (i < num_params) {
+        regs->sp -= (num_params - i) * sizeof(long);
+        ptrace(PTRACE_POKEDATA, pid, regs->sp, params[i]);
+        for (i++; i < num_params; i++) {
+            regs->sp += sizeof(long);
+            ptrace(PTRACE_POKEDATA, pid, regs->sp, params[i]);
+        }
+    }
+
+    regs->pc = addr;
+    regs->regs[30] = 0;  // Link register (x30) set to 0
+
+    if (ptrace(PTRACE_SETREGSET, pid, NULL, regs) == -1 || ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
+        printf("error\n");
+        return -1;
+    }
+
+    int stat = 0;
+    waitpid(pid, &stat, WUNTRACED);
+    while (stat != 0xb7f) {
+        if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
+            printf("error\n");
+            return -1;
+        }
+        waitpid(pid, &stat, WUNTRACED);
+    }
+
+    return 0;
+}
 #elif defined(__i386__)
 long ptrace_call(pid_t pid, uint32_t addr, long *params, uint32_t num_params, struct user_regs_struct * regs)
 {
@@ -189,7 +232,7 @@ long ptrace_call(pid_t pid, uint32_t addr, long *params, uint32_t num_params, st
 
 int ptrace_getregs(pid_t pid, struct pt_regs * regs)
 {
-    if (ptrace(PTRACE_GETREGS, pid, NULL, regs) < 0) {
+    if (ptrace(PTRACE_GETREGSET, pid, NULL, regs) < 0) {
         perror("ptrace_getregs: Can not get register values");
         return -1;
     }
@@ -199,7 +242,7 @@ int ptrace_getregs(pid_t pid, struct pt_regs * regs)
 
 int ptrace_setregs(pid_t pid, struct pt_regs * regs)
 {
-    if (ptrace(PTRACE_SETREGS, pid, NULL, regs) < 0) {
+    if (ptrace(PTRACE_SETREGSET, pid, NULL, regs) < 0) {
         perror("ptrace_setregs: Can not set register values");
         return -1;
     }
@@ -341,6 +384,9 @@ long ptrace_retval(struct pt_regs * regs)
     return regs->ARM_r0;
 #elif defined(__i386__)
     return regs->eax;
+#elif defined(__aarch64__)
+    struct user_regs_struct *aarch64_regs = (struct user_regs_struct *)regs;
+    return aarch64_regs->regs[0];  // x0 register
 #else
 #error "Not supported"
 #endif
@@ -352,6 +398,9 @@ long ptrace_ip(struct pt_regs * regs)
     return regs->ARM_pc;
 #elif defined(__i386__)
     return regs->eip;
+#elif defined(__aarch64__)
+    struct user_regs_struct *aarch64_regs = (struct user_regs_struct *)regs;
+    return aarch64_regs->pc;
 #else
 #error "Not supported"
 #endif
